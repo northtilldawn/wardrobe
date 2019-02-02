@@ -81,10 +81,10 @@ namespace chokaphi_VamDazz
                 // Create the import options
                 supportedShaderProperties = new List< ShaderRef >();
                 supportedShaderProperties.Add( new ShaderRef( this, "Diffuse texture", PROP_DIFFUSE, true ) );
-                supportedShaderProperties.Add( new ShaderRef( this, "Alpha", PROP_CUTOUT, true ) );
-                supportedShaderProperties.Add( new ShaderRef( this, "Normal map", PROP_NORMAL, false ) );
+                supportedShaderProperties.Add( new ShaderRef( this, "Alpha", PROP_ALPHA, true ) );
+                supportedShaderProperties.Add( new ShaderRef( this, "Normal map", "_BumpMap", false ) );
                 supportedShaderProperties.Add( new ShaderRef( this, "Specular map", "_SpecTex", false ) );
-                supportedShaderProperties.Add( new ShaderRef( this, "Glossy", PROP_GLOSS, false ) );
+                supportedShaderProperties.Add( new ShaderRef( this, "Glossy", "_GlossTex", false ) );
 
                 // Action to perform replacement
                 applyButton = CreateButton( "Apply" );
@@ -413,40 +413,47 @@ namespace chokaphi_VamDazz
 
         private void LoadSaved( StorableSlot slot, TextureReference full )
         {
-            string[] components = slot.Material.Split( '/' );
-            if( components.Length != 3 )
-            {
-                SuperController.LogError( $"Found badly formatted replacement material: {slot}" );
-            }
-            else
-            {
-                SelectClothingItem( components.ElementAt( 0 ) );
-                if( myClothes == null )
-                    throw new Exception( $"Could not get clothes '{components.ElementAt( 0 )}'" );
-
-                SelectSkinWrap( components.ElementAt( 1 ) );
-                if( mySkin == null )
-                    throw new Exception( $"Could not get skin '{components.ElementAt( 1 )}'");
-
-                SelectMaterial( components.ElementAt( 2 ) );
-                if( myMaterial == null )
-                    throw new Exception( $"Could not get material '{components.ElementAt( 2 )}'" );
-
-                // The list of references should now be populated.
-                TextureReference texref = textureReferences
-                    .Where( tr => tr.reference == full.reference )
-                    .DefaultIfEmpty( null )
-                    .FirstOrDefault();
-                if( texref == null )
+            try
+            { 
+                string[] components = slot.Material.Split( '/' );
+                if( components.Length != 3 )
                 {
-                    SuperController.LogError( $"Texture missing '{full}'" );
+                    SuperController.LogError( $"Found badly formatted replacement material: {slot}" );
                 }
                 else
                 {
-                    // TODO: Set the properties
-                    SelectTexture( texref.Abbreviation );
-                    ApplyTexture();
+                    SelectClothingItem( components.ElementAt( 0 ) );
+                    if( myClothes == null )
+                        throw new Exception( $"Could not get clothes '{components.ElementAt( 0 )}'" );
+
+                    SelectSkinWrap( components.ElementAt( 1 ) );
+                    if( mySkin == null )
+                        throw new Exception( $"Could not get skin '{components.ElementAt( 1 )}'");
+
+                    SelectMaterial( components.ElementAt( 2 ) );
+                    if( myMaterial == null )
+                        throw new Exception( $"Could not get material '{components.ElementAt( 2 )}'" );
+
+                    // The list of references should now be populated.
+                    TextureReference texref = textureReferences
+                        .Where( tr => tr.reference == full.reference )
+                        .DefaultIfEmpty( null )
+                        .FirstOrDefault();
+                    if( texref == null )
+                    {
+                        SuperController.LogError( $"Texture missing '{full}'" );
+                    }
+                    else
+                    {
+                        // TODO: Set the properties
+                        SelectTexture( texref.Abbreviation );
+                        ApplyTexture();
+                    }
                 }
+            }
+            catch( Exception ex )
+            {
+                SuperController.LogError( $"Could not load texture '{full.reference}' for '{slot.Material}/{slot.Property}': {ex.Message}" );
             }
         }
 
@@ -525,6 +532,7 @@ namespace chokaphi_VamDazz
 
             public StorableReplacements() : base( "replacements", "<placeholder>" )
             {
+                storeType = StoreType.Full;
             }
 
             public void setTextureReplacement( string slot, TextureReference storedName, List< string > shaderProps )
@@ -607,7 +615,7 @@ namespace chokaphi_VamDazz
                 {
                     TextureReference texref = TextureReference.fromReference( replacements[key] );
                     entries[ new StorableSlot( key, PROP_DIFFUSE ) ] = texref;
-                    entries[ new StorableSlot( key, PROP_CUTOUT ) ] = texref;
+                    entries[ new StorableSlot( key, PROP_ALPHA ) ] = texref;
                 }
             }
         }
@@ -739,10 +747,7 @@ namespace chokaphi_VamDazz
 
         private static List< string > EMPTY_CHOICES = new List< string >();
         private static readonly string PROP_DIFFUSE = "_MainTex";
-        private static readonly string PROP_CUTOUT  = "_AlphaTex";
-        private static readonly string PROP_NORMAL  = "_BumpMap";
-        private static readonly string PROP_GLOSS   = "_GlossTex";
-        private static readonly string PROP_SPEC    = "_SpecTex";
+        private static readonly string PROP_ALPHA   = "_AlphaTex";
     }
 
 }
